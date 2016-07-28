@@ -3,18 +3,16 @@ using System.Collections.Generic;
 using System.Text;
 using System.IO;
 using ESRI.ArcGIS.Desktop.AddIns;
-using System.Windows.Forms;
 using ESRI.ArcGIS.ArcMapUI;
-using ESRI.ArcGIS.Geometry;
-using ESRI.ArcGIS.Display;
 using ESRI.ArcGIS.Carto;
 using ESRI.ArcGIS.Geodatabase;
+using ESRI.ArcGIS.Geometry;
 
 namespace Phonatech
 {
-    public class AddTower : ESRI.ArcGIS.Desktop.AddIns.Tool
+    public class SetDeviceLocation : ESRI.ArcGIS.Desktop.AddIns.Tool
     {
-        public AddTower()
+        public SetDeviceLocation()
         {
         }
 
@@ -25,6 +23,8 @@ namespace Phonatech
 
         protected override void OnMouseUp(MouseEventArgs arg)
         {
+            //base.OnMouseUp(arg);
+
             int x = arg.X;
             int y = arg.Y;
 
@@ -37,24 +37,7 @@ namespace Phonatech
             DeviceManager dm = new DeviceManager(pDS.Workspace);
             dm.AddDevice("D01", pPoint);
 
-
-
-
-            TowerManager tm = new TowerManager(pDS.Workspace);
-
-            
-            Tower t = tm.GetNearestTower(pPoint, 20);
-
-            //Tower t = tm.GetTowerByID("T04");
-            if (t != null)
-            {
-                MessageBox.Show("Tower id " + t.ID + Environment.NewLine + "Type " + t.TowerType + Environment.NewLine + "Networkband " + t.NetworkBand);
-            }
-
-            //IPoint pPoint = pMxdoc.ActiveView.ScreenDisplay.DisplayTransformation.ToMapPoint(x, y);
-
-            //MessageBox.Show("Mouse point is x: " + x + Environment.NewLine + "y: " + y + Environment.NewLine + "MapX: " + pPoint.X + Environment.NewLine + "MapY: " + pPoint.Y);
-
+            pMxdoc.ActiveView.Refresh();
         }
     }
 

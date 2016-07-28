@@ -27,6 +27,8 @@ namespace Phonatech
 
                 Towers towers = tm.GetTowers();
                 tm.GenerateTowerCoverage(towers);
+                tm.GenerateDeadAreas();
+
                 pMxdoc.ActiveView.Refresh();
             }
             catch(Exception ex)

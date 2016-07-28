@@ -56,6 +56,5 @@ namespace Phonatech
         /// </summary>
         public IPoint TowerLocation { get; set; }
 
- 
     }
 }

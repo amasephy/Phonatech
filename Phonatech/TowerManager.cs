@@ -56,7 +56,7 @@ namespace Phonatech
             tower.TowerType = pTowerFeature.Value[pTowerFeature.Fields.FindField("TOWERTYPE")].ToString();
             tower.TowerLocation = (IPoint)pTowerFeature.Shape;
 
-            // Search for the tower details...
+            // Search for the tower details in data table...
             foreach(DataRow r in _towerdetails.Rows)
             {
                 if (r["TowerType"].ToString() == tower.TowerType)
@@ -65,7 +65,6 @@ namespace Phonatech
                     tower.TowerCost = double.Parse(r["TowerCost"].ToString());
                     tower.TowerBaseArea = double.Parse(r["TowerBaseArea"].ToString());
                     tower.TowerHeight = double.Parse(r["TowerHeight"].ToString());
-
                 }
             }
 
@@ -114,6 +113,69 @@ namespace Phonatech
             // Get the tower type, and query the tower details table to get the rest of the data
         }
 
+        public void GenerateDeadAreas()
+        {
+            //Get the service territory
+            IWorkspaceEdit pWorkspaceEdit;
+            pWorkspaceEdit = (IWorkspaceEdit)this._workspace;
+            try
+            {
+                IFeatureWorkspace pFWorkspace = (IFeatureWorkspace)pWorkspaceEdit;
+
+                ServiceTerritory mainST = new ServiceTerritory(_workspace, "MAIN");
+
+                IGeometry DeadAreas = null;
+                if (mainST != null)
+                {
+                    IGeometry pSVGeometry = mainST.ServiceTerritoryFeature.Shape;
+                    IGeometry pRecptionGeometry = null;
+
+                    // union all the signals and get one big reception area geometry
+                    IFeatureClass pTowerRangeFC = pFWorkspace.OpenFeatureClass("TowerRange");
+                    IFeatureCursor pRFCursor = pTowerRangeFC.Search(null, false);
+                    IFeature pRangeFeature = pRFCursor.NextFeature();
+                    while (pRangeFeature != null)
+                    {
+                        if (pRecptionGeometry == null)
+                        {
+                            pRecptionGeometry = pRangeFeature.Shape;
+                        }
+                        else
+                        {
+                            ITopologicalOperator pTopo = (ITopologicalOperator)pRecptionGeometry;
+                            pRecptionGeometry = pTopo.Union(pRangeFeature.Shape);
+                        }
+
+                        pRangeFeature = pRFCursor.NextFeature();
+                    }
+
+                    ITopologicalOperator pDeadAreaTopo = (ITopologicalOperator)pSVGeometry;
+                    DeadAreas = pDeadAreaTopo.SymmetricDifference(pRecptionGeometry);
+                    //edit and add to fc
+                    pWorkspaceEdit.StartEditing(true);
+                    pWorkspaceEdit.StartEditOperation();
+
+                    double deadCoverage = ((IArea)DeadAreas).Area * 100 / ((IArea)pSVGeometry).Area;
+                    double receptionCoverage = 100 - deadCoverage;
+
+                    IFeatureClass pDeadAreasFC = pFWorkspace.OpenFeatureClass("DeadAreas");
+                    IFeature pDeadArea = pDeadAreasFC.CreateFeature();
+                    pDeadArea.Shape = DeadAreas;
+                    pDeadArea.Store();
+
+                    pWorkspaceEdit.StopEditOperation();
+                    pWorkspaceEdit.StopEditing(true);
+
+                    mainST.updateCoverages(deadCoverage, receptionCoverage);
+                }
+            }
+            catch (Exception ex)
+            {
+                pWorkspaceEdit.AbortEditOperation();
+                System.Windows.Forms.MessageBox.Show(ex.ToString());
+            }
+        }
+
         public void GenerateTowerCoverage(Towers pTowers)
         {
             IWorkspaceEdit pWorkspaceEdit;
@@ -155,7 +217,7 @@ namespace Phonatech
 
                     IFeature pFeature = pTowerRangeFC.CreateFeature();
 
-                    pFeature.Value[pFeature.Fields.FindField("TOWERID")] = "T04";
+                    pFeature.Value[pFeature.Fields.FindField("TOWERID")] = pTower.ID;
                     pFeature.Value[pFeature.Fields.FindField("RANGE")] = 3;
 
                     pFeature.Shape = range3Bars;
@@ -164,7 +226,7 @@ namespace Phonatech
 
                     IFeature pFeature2Bar = pTowerRangeFC.CreateFeature();
 
-                    pFeature2Bar.Value[pFeature.Fields.FindField("TOWERID")] = "T04";
+                    pFeature2Bar.Value[pFeature.Fields.FindField("TOWERID")] = pTower.ID;
                     pFeature2Bar.Value[pFeature.Fields.FindField("RANGE")] = 2;
 
                     pFeature2Bar.Shape = range2BarsDonut;
@@ -173,7 +235,7 @@ namespace Phonatech
 
                     IFeature pFeature1Bar = pTowerRangeFC.CreateFeature();
 
-                    pFeature1Bar.Value[pFeature.Fields.FindField("TOWERID")] = "T04";
+                    pFeature1Bar.Value[pFeature.Fields.FindField("TOWERID")] = pTower.ID;
                     pFeature1Bar.Value[pFeature.Fields.FindField("RANGE")] = 1;
 
                     pFeature1Bar.Shape = range1BarsDonut;
